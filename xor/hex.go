@@ -1,4 +1,3 @@
-// Package xor contains xor-ing utilities.
 package xor
 
 import (

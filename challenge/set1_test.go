@@ -23,3 +23,8 @@ func TestSet1_Challenge2(t *testing.T) {
 	x := xor.Hex("1c0111001f010100061a024b53535009181c", "686974207468652062756c6c277320657965")
 	assert.Equal(t, "746865206b696420646f6e277420706c6179", x)
 }
+
+func TestSet1_Challenge3(t *testing.T) {
+	decrypted := xor.DecryptSingle("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")
+	assert.Equal(t, "Cooking MC's like a pound of bacon", decrypted)
+}
