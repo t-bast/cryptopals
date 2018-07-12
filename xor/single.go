@@ -42,7 +42,8 @@ var (
 // single character.
 // It assumes that the message is english ASCII and uses letter frequency to
 // select the most likely decrypted value.
-func DecryptSingle(c string) string {
+// It returns the associated score.
+func DecryptSingle(c string) (string, float32) {
 	decoded, err := hex.DecodeString(c)
 	if err != nil {
 		panic(err)
@@ -65,7 +66,7 @@ func DecryptSingle(c string) string {
 		}
 	}
 
-	return string(best)
+	return string(best), bestScore
 }
 
 // score a decryption candidate using letter frequency.

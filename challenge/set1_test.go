@@ -1,8 +1,12 @@
 package set1
 
 import (
+	"bufio"
 	"encoding/base64"
 	"encoding/hex"
+	"io"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -25,6 +29,31 @@ func TestSet1_Challenge2(t *testing.T) {
 }
 
 func TestSet1_Challenge3(t *testing.T) {
-	decrypted := xor.DecryptSingle("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")
+	decrypted, _ := xor.DecryptSingle("1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736")
 	assert.Equal(t, "Cooking MC's like a pound of bacon", decrypted)
+}
+
+func TestSet1_Challenge4(t *testing.T) {
+	testData := filepath.Join("testdata", "1_4.txt")
+	f, _ := os.OpenFile(testData, os.O_RDONLY, os.ModePerm)
+	defer f.Close()
+
+	var bestCandidate string
+	var bestScore float32
+
+	reader := bufio.NewReader(f)
+	for {
+		line, _, err := reader.ReadLine()
+		if err == io.EOF {
+			break
+		}
+
+		candidate, score := xor.DecryptSingle(string(line))
+		if score > bestScore {
+			bestScore = score
+			bestCandidate = candidate
+		}
+	}
+
+	assert.Equal(t, "Now that the party is jumping\n", bestCandidate)
 }
