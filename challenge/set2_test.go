@@ -40,3 +40,9 @@ func TestSet2_Challenge3(t *testing.T) {
 	detectedMode := oracle.DetectEncryptionMode(o)
 	assert.Equal(t, o.Mode, detectedMode)
 }
+
+func TestSet2_Challenge4(t *testing.T) {
+	o := oracle.NewECBOracle()
+	detectedSecret := oracle.DetectECBSecret(o)
+	assert.Equal(t, "Rollin' in my 5.0\nWith my rag-top down so my hair can blow\nThe girlies on standby waving just to say hi\nDid you stop? No, I just drove by\n", string(detectedSecret))
+}
