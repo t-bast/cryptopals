@@ -16,10 +16,16 @@ func Hex(s1, s2 string) string {
 		panic(err)
 	}
 
+	b := Bytes(b1, b2)
+	return hex.EncodeToString(b)
+}
+
+// Bytes XORs two byte arrays that must have the same size.
+func Bytes(b1, b2 []byte) []byte {
 	b := make([]byte, len(b1))
 	for i := 0; i < len(b1); i++ {
 		b[i] = b1[i] ^ b2[i]
 	}
 
-	return hex.EncodeToString(b)
+	return b
 }
