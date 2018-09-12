@@ -38,5 +38,14 @@ func (o *UserProfileOracle) Decrypt(encrypted []byte) *UserProfile {
 
 // CreateAdminProfile creates an admin profile by exploiting flaws in ECB.
 func CreateAdminProfile(o *UserProfileOracle) *UserProfile {
-	return &UserProfile{}
+	// Find the encrypted block for "admin\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B".
+	e1 := o.Encrypt(NewUserProfile("AAAAAAAAAAadmin\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B\x0B"))
+
+	// Replace it in a valid ciphertext where the "user" part is isolated at the end.
+	e2 := o.Encrypt(NewUserProfile("pwned@bar.com"))
+	e := make([]byte, len(e2))
+	copy(e, e2)
+	copy(e[32:], e1[16:32])
+
+	return o.Decrypt(e)
 }
