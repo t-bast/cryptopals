@@ -11,6 +11,7 @@ import (
 	"github.com/t-bast/cryptopals/cipher/block"
 	"github.com/t-bast/cryptopals/cipher/padding"
 	"github.com/t-bast/cryptopals/oracle"
+	"github.com/t-bast/cryptopals/profile"
 )
 
 func TestSet2_Challenge1(t *testing.T) {
@@ -45,4 +46,10 @@ func TestSet2_Challenge4(t *testing.T) {
 	o := oracle.NewECBOracle()
 	detectedSecret := oracle.DetectECBSecret(o)
 	assert.Equal(t, "Rollin' in my 5.0\nWith my rag-top down so my hair can blow\nThe girlies on standby waving just to say hi\nDid you stop? No, I just drove by\n", string(detectedSecret))
+}
+
+func TestSet2_Challenge5(t *testing.T) {
+	o := profile.NewUserProfileOracle()
+	p := profile.CreateAdminProfile(o)
+	assert.Equal(t, "admin", p.Role)
 }
