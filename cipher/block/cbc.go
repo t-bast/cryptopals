@@ -1,6 +1,9 @@
 package block
 
 import (
+	"crypto/aes"
+
+	"github.com/t-bast/cryptopals/cipher/padding"
 	"github.com/t-bast/cryptopals/xor"
 )
 
@@ -17,18 +20,22 @@ func NewCBC(key []byte, iv []byte) *CBC {
 
 // Encrypt the given message.
 func (c *CBC) Encrypt(message []byte) []byte {
+	b, err := aes.NewCipher(c.Key)
+	if err != nil {
+		panic(err)
+	}
+
 	blockLen := len(c.Key)
-	ecb := NewECB(c.Key)
 	v := make([]byte, len(c.IV))
 	copy(v, c.IV)
 
-	encrypted := make([]byte, len(message))
-	for i := 0; i < len(message)/blockLen; i++ {
+	paddedMsg := padding.PKCS7(message, blockLen)
+	encrypted := make([]byte, len(paddedMsg))
+	for i := 0; i < len(paddedMsg)/blockLen; i++ {
 		start := i * blockLen
 		end := start + blockLen
-		block := ecb.Encrypt(xor.Bytes(message[start:end], v))
-		copy(v, block)
-		copy(encrypted[start:end], block)
+		b.Encrypt(encrypted[start:end], xor.Bytes(paddedMsg[start:end], v))
+		copy(v, encrypted[start:end])
 	}
 
 	return encrypted
@@ -36,8 +43,12 @@ func (c *CBC) Encrypt(message []byte) []byte {
 
 // Decrypt the given ciphertext.
 func (c *CBC) Decrypt(ciphertext []byte) []byte {
+	b, err := aes.NewCipher(c.Key)
+	if err != nil {
+		panic(err)
+	}
+
 	blockLen := len(c.Key)
-	ecb := NewECB(c.Key)
 	v := make([]byte, len(c.IV))
 	copy(v, c.IV)
 
@@ -45,10 +56,13 @@ func (c *CBC) Decrypt(ciphertext []byte) []byte {
 	for i := 0; i < len(ciphertext)/blockLen; i++ {
 		start := i * blockLen
 		end := start + blockLen
-		block := xor.Bytes(ecb.Decrypt(ciphertext[start:end]), v)
-		copy(decrypted[start:end], block[:])
+		block := make([]byte, blockLen)
+		b.Decrypt(block, ciphertext[start:end])
+		copy(decrypted[start:end], xor.Bytes(block, v))
 		copy(v, ciphertext[start:end])
 	}
 
-	return decrypted
+	msg := padding.UnPKCS7(decrypted, blockLen)
+
+	return msg
 }

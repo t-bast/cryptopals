@@ -1,14 +1,27 @@
 package padding
 
-// PKCS7 adds padding to the given block according to the PKCS#7 spec.
-func PKCS7(lastBlock []byte, blockLen int) []byte {
-	padded := make([]byte, blockLen)
-	copy(padded, lastBlock)
-
-	paddingLen := blockLen - len(lastBlock)
-	for i := len(lastBlock); i < blockLen; i++ {
-		padded[i] = byte(paddingLen)
+// PKCS7 adds padding to the given message according to the PKCS#7 spec.
+func PKCS7(message []byte, blockLen int) []byte {
+	paddedMsgLen := len(message)
+	if len(message)%blockLen == 0 {
+		paddedMsgLen += blockLen
+	} else {
+		paddedMsgLen = paddedMsgLen + blockLen - (len(message) % blockLen)
 	}
 
-	return padded
+	paddedMsg := make([]byte, paddedMsgLen)
+	copy(paddedMsg, message)
+
+	paddingLen := paddedMsgLen - len(message)
+	for i := len(message); i < paddedMsgLen; i++ {
+		paddedMsg[i] = byte(paddingLen)
+	}
+
+	return paddedMsg
+}
+
+// UnPKCS7 removes padding from the given message according to the PKCS#7 spec.
+func UnPKCS7(paddedMsg []byte, blockLen int) []byte {
+	paddingLen := int(paddedMsg[len(paddedMsg)-1])
+	return paddedMsg[:len(paddedMsg)-paddingLen]
 }

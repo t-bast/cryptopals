@@ -2,6 +2,8 @@ package block
 
 import (
 	"crypto/aes"
+
+	"github.com/t-bast/cryptopals/cipher/padding"
 )
 
 // ECB implements ECB encryption with AES.
@@ -21,11 +23,13 @@ func (e *ECB) Encrypt(message []byte) []byte {
 		panic(err)
 	}
 
-	encrypted := make([]byte, len(message))
-	for i := 0; i < len(message)/len(e.Key); i++ {
+	paddedMsg := padding.PKCS7(message, len(e.Key))
+
+	encrypted := make([]byte, len(paddedMsg))
+	for i := 0; i < len(paddedMsg)/len(e.Key); i++ {
 		start := i * len(e.Key)
 		end := start + len(e.Key)
-		b.Encrypt(encrypted[start:end], message[start:end])
+		b.Encrypt(encrypted[start:end], paddedMsg[start:end])
 	}
 
 	return encrypted
@@ -45,5 +49,7 @@ func (e *ECB) Decrypt(ciphertext []byte) []byte {
 		b.Decrypt(decrypted[start:end], ciphertext[start:end])
 	}
 
-	return decrypted
+	msg := padding.UnPKCS7(decrypted, len(e.Key))
+
+	return msg
 }
