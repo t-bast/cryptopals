@@ -31,4 +31,9 @@ func TestPKCS7Padding(t *testing.T) {
 		unpadded := padding.UnPKCS7(padded, 8)
 		assert.Equal(t, []byte("YELLOW SUBMARINE"), unpadded)
 	})
+
+	t.Run("panics on invalid padding", func(t *testing.T) {
+		assert.Panics(t, func() { padding.UnPKCS7([]byte("ICE ICE BABY\x05\x05\x05\x05"), 8) })
+		assert.Panics(t, func() { padding.UnPKCS7([]byte("ICE ICE BABY\x01\x02\x03\x04"), 8) })
+	})
 }

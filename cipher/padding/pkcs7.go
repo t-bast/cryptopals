@@ -22,6 +22,12 @@ func PKCS7(message []byte, blockLen int) []byte {
 
 // UnPKCS7 removes padding from the given message according to the PKCS#7 spec.
 func UnPKCS7(paddedMsg []byte, blockLen int) []byte {
-	paddingLen := int(paddedMsg[len(paddedMsg)-1])
-	return paddedMsg[:len(paddedMsg)-paddingLen]
+	paddingLen := paddedMsg[len(paddedMsg)-1]
+	for i := 1; i <= int(paddingLen); i++ {
+		if paddedMsg[len(paddedMsg)-i] != paddingLen {
+			panic("invalid PKCS#7 padding")
+		}
+	}
+
+	return paddedMsg[:len(paddedMsg)-int(paddingLen)]
 }
