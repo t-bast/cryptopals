@@ -54,3 +54,10 @@ func TestSet2_Challenge5(t *testing.T) {
 	p := profile.CreateAdminProfile(o)
 	assert.Equal(t, "admin", p.Role)
 }
+
+func TestSet2_Challenge6(t *testing.T) {
+	o := oracle.NewECBOracle2()
+	detectedSecret := oracle.DetectECBSecret2(o)
+	expected := "Rollin' in my 5.0\nWith my rag-top down so my hair can blow\nThe girlies on standby waving just to say hi\nDid you stop? No, I just drove by\n"
+	assert.Equal(t, expected, string(detectedSecret[:len(expected)]))
+}
