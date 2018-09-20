@@ -61,3 +61,21 @@ func TestSet2_Challenge6(t *testing.T) {
 	expected := "Rollin' in my 5.0\nWith my rag-top down so my hair can blow\nThe girlies on standby waving just to say hi\nDid you stop? No, I just drove by\n"
 	assert.Equal(t, expected, string(detectedSecret[:len(expected)]))
 }
+
+func TestSet2_Challenge8(t *testing.T) {
+	o := oracle.NewCBCOracle()
+
+	// Instead of ; and = that are going to be replaced by the encrypt method,
+	// we use the ascii char just below them.
+	// We make sure a padding of 1 is used so that our bit-flipping doesn't
+	// produce an invalid padding.
+	encrypted := o.Encrypt("\x3aadmin\x3ctrue\x3aAAAAAAAAA")
+
+	// Then we do some bit-flipping on the ciphertext which will propagate to
+	// next blocks and insert ; and = where we want them.
+	encrypted[16] ^= 1
+	encrypted[22] ^= 1
+	encrypted[27] ^= 1
+
+	assert.True(t, o.CheckAdmin(encrypted))
+}
