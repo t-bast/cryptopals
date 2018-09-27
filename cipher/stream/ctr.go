@@ -2,6 +2,7 @@ package stream
 
 import (
 	"crypto/aes"
+	"encoding/base64"
 	"encoding/binary"
 
 	"github.com/t-bast/cryptopals/score"
@@ -55,9 +56,9 @@ func (e *CTR) Decrypt(ciphertext []byte) []byte {
 	return e.Encrypt(ciphertext)
 }
 
-// PwnCTRNonceReuse takes multiples ciphertexts generated with the same nonce and
-// figures out the keystream.
-func PwnCTRNonceReuse(ciphertexts [][]byte) []byte {
+// PwnCTRNonceReuseLetterFrequency takes multiples ciphertexts generated with
+// the same nonce and figures out the keystream from letter frequency.
+func PwnCTRNonceReuseLetterFrequency(ciphertexts [][]byte) []byte {
 	maxLength := 0
 	for _, ciphertext := range ciphertexts {
 		if len(ciphertext) > maxLength {
@@ -94,6 +95,31 @@ func PwnCTRNonceReuse(ciphertexts [][]byte) []byte {
 
 		keystream = append(keystream, bestCandidate)
 	}
+
+	return keystream
+}
+
+// PwnCTRNonceReuseStatistical interprets nonce reuse as a repeated-key XOR
+// and uses it to find the key stream.
+func PwnCTRNonceReuseStatistical(ciphertexts [][]byte) []byte {
+	minLength := len(ciphertexts[0])
+	minCipherIndex := 0
+	for i, ciphertext := range ciphertexts {
+		if len(ciphertext) < minLength {
+			minLength = len(ciphertext)
+			minCipherIndex = i
+		}
+	}
+
+	var fullCiphertext []byte
+	for _, ciphertext := range ciphertexts {
+		fullCiphertext = append(fullCiphertext, ciphertext[:minLength]...)
+	}
+
+	decrypted := []byte(xor.DecryptWithRepeat(base64.StdEncoding.EncodeToString(fullCiphertext)))
+	keystream := xor.Bytes(
+		decrypted[minLength*minCipherIndex:minLength*(minCipherIndex+1)],
+		fullCiphertext[minLength*minCipherIndex:minLength*(minCipherIndex+1)])
 
 	return keystream
 }

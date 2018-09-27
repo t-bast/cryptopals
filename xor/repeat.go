@@ -92,7 +92,7 @@ func (s byScore) Less(i, j int) bool {
 // that uses repeating-key XOR.
 func keySizeCandidates(b []byte) []int {
 	var candidates byScore
-	for i := 2; i <= 40; i++ {
+	for i := 2; i <= 60; i++ {
 		d1 := distance.Hamming(string(b[:i]), string(b[i:2*i]))
 		d2 := distance.Hamming(string(b[:i]), string(b[2*i:3*i]))
 		d3 := distance.Hamming(string(b[:i]), string(b[3*i:4*i]))
