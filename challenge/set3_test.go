@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"io"
+	mrand "math/rand"
 	"os"
 	"path/filepath"
 	"strings"
@@ -15,6 +16,7 @@ import (
 	"github.com/t-bast/cryptopals/cipher/stream"
 	"github.com/t-bast/cryptopals/distance"
 	"github.com/t-bast/cryptopals/oracle"
+	"github.com/t-bast/cryptopals/prng"
 	"github.com/t-bast/cryptopals/xor"
 )
 
@@ -108,4 +110,23 @@ func TestSet3_Challenge4(t *testing.T) {
 	// But it's enough for a human to correct the last remaining error.
 	dist := distance.Hamming(string(smallestPlaintext), string(smallestDecrypted))
 	assert.True(t, dist <= 5)
+}
+
+func TestSet3_Challenge6(t *testing.T) {
+	r1 := 40 + mrand.Intn(1000-40)
+	rng := prng.NewMT19937(r1)
+
+	r2 := mrand.Intn(1000)
+	out := rng.Rand()
+
+	// The goal is now to find r1 using only out.
+	for i := r1 + r2; i >= 0; i-- {
+		out2 := prng.NewMT19937(i).Rand()
+		if out == out2 {
+			assert.Equal(t, r1, i)
+			return
+		}
+	}
+
+	assert.Fail(t, "Couldn't find seed")
 }

@@ -1,4 +1,4 @@
-package rand
+package prng
 
 const (
 	w = 32
