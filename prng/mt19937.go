@@ -39,17 +39,22 @@ func NewMT19937(seed int) *MT19937 {
 	}
 }
 
+// NewMT19937FromState creates a new random generator from the given internal
+// state.
+func NewMT19937FromState(state []int) *MT19937 {
+	return &MT19937{
+		mt:    state,
+		index: 0,
+	}
+}
+
 // Rand produces a random number.
 func (rnd *MT19937) Rand() int {
 	if rnd.index >= n {
 		rnd.twist()
 	}
 
-	y := rnd.mt[rnd.index]
-	y ^= (y >> u) & d
-	y ^= (y << s) & b
-	y ^= int((uint64(y<<t) & c) % (1 << 32))
-	y ^= y >> l
+	y := MT19937Temper(rnd.mt[rnd.index])
 
 	rnd.index++
 	return y
@@ -72,4 +77,28 @@ func (rnd *MT19937) twist() {
 	}
 
 	rnd.index = 0
+}
+
+// MT19937Temper tempers the internal state.
+func MT19937Temper(y int) int {
+	y ^= (y >> u) & d
+	y ^= (y << s) & b
+	y ^= int((uint64(y<<t) & c) % (1 << 32))
+	y ^= y >> l
+
+	return y
+}
+
+// MT19937Untemper reverses MT19937Temper.
+func MT19937Untemper(y int) int {
+	y ^= y >> l
+	y ^= int((uint64(y<<t) & c) % (1 << 32))
+	for i := 0; i < 7; i++ {
+		y ^= (y << s) & b
+	}
+	for i := 0; i < 3; i++ {
+		y ^= (y >> u) & d
+	}
+
+	return y
 }

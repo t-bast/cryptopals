@@ -130,3 +130,21 @@ func TestSet3_Challenge6(t *testing.T) {
 
 	assert.Fail(t, "Couldn't find seed")
 }
+
+func Test3_Challenge7(t *testing.T) {
+	rng := prng.NewMT19937(mrand.Intn(1000))
+
+	state := make([]int, 624)
+	for i := 0; i < 624; i++ {
+		state[i] = prng.MT19937Untemper(rng.Rand())
+	}
+
+	cloned := prng.NewMT19937FromState(state[:])
+	for i := 0; i < 624; i++ {
+		cloned.Rand()
+	}
+
+	for i := 0; i < 100; i++ {
+		assert.Equal(t, rng.Rand(), cloned.Rand())
+	}
+}
