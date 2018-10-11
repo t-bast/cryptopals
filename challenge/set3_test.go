@@ -2,6 +2,7 @@ package challenge
 
 import (
 	"bufio"
+	"bytes"
 	"crypto/rand"
 	"encoding/base64"
 	"io"
@@ -131,7 +132,7 @@ func TestSet3_Challenge6(t *testing.T) {
 	assert.Fail(t, "Couldn't find seed")
 }
 
-func Test3_Challenge7(t *testing.T) {
+func TestSet3_Challenge7(t *testing.T) {
 	rng := prng.NewMT19937(mrand.Intn(1000))
 
 	state := make([]int, 624)
@@ -146,5 +147,26 @@ func Test3_Challenge7(t *testing.T) {
 
 	for i := 0; i < 100; i++ {
 		assert.Equal(t, rng.Rand(), cloned.Rand())
+	}
+}
+
+func TestSet3_Challenge8(t *testing.T) {
+	prefixLen := mrand.Intn(30)
+	prefix := make([]byte, prefixLen)
+	mrand.Read(prefix)
+
+	knownMessage := []byte{'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A', 'A'}
+	message := append(prefix, knownMessage...)
+
+	enc := stream.NewPRNG(4242)
+	ciphertext := enc.Encrypt(message)
+
+	for i := 0; i < 1<<16; i++ {
+		testEnc := stream.NewPRNG(uint16(i))
+		decrypted := testEnc.Decrypt(ciphertext)
+
+		if bytes.Equal(knownMessage, decrypted[len(decrypted)-14:]) {
+			assert.Equal(t, 4242, i)
+		}
 	}
 }
