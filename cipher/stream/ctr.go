@@ -123,3 +123,16 @@ func PwnCTRNonceReuseStatistical(ciphertexts [][]byte) []byte {
 
 	return keystream
 }
+
+// EditCTR allows the user to seek into the ciphertext, decrypt and re-encrypt
+// with a different plaintext.
+// This feature opens a security hole in AES CTR.
+func EditCTR(ciphertext []byte, key []byte, offset int, newPlaintext []byte) []byte {
+	enc := NewCTR(key, 0)
+
+	decrypted := enc.Decrypt(ciphertext)
+	copy(decrypted[offset:], newPlaintext)
+
+	encrypted := enc.Encrypt(decrypted)
+	return encrypted
+}
