@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/t-bast/cryptopals/cipher/block"
 	"github.com/t-bast/cryptopals/cipher/stream"
+	"github.com/t-bast/cryptopals/oracle"
 )
 
 func TestSet4_Challenge1(t *testing.T) {
@@ -39,4 +40,20 @@ func TestSet4_Challenge1(t *testing.T) {
 	}
 
 	assert.Equal(t, decrypted, plaintext)
+}
+
+func TestSet4_Challenge2(t *testing.T) {
+	o := oracle.NewCTROracle()
+
+	// Instead of ; and = that are going to be replaced by the encrypt method,
+	// we use the ascii char just below them.
+	encrypted := o.Encrypt("\x3aadmin\x3ctrue\x3a")
+
+	// Then we do some bit-flipping on the ciphertext to change our inserted
+	// characters to ; and =.
+	encrypted[32] ^= 1
+	encrypted[38] ^= 1
+	encrypted[43] ^= 1
+
+	assert.True(t, o.CheckAdmin(encrypted))
 }
