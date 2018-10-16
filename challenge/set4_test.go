@@ -11,6 +11,7 @@ import (
 	"github.com/t-bast/cryptopals/cipher/block"
 	"github.com/t-bast/cryptopals/cipher/stream"
 	"github.com/t-bast/cryptopals/oracle"
+	"github.com/t-bast/cryptopals/xor"
 )
 
 func TestSet4_Challenge1(t *testing.T) {
@@ -56,4 +57,24 @@ func TestSet4_Challenge2(t *testing.T) {
 	encrypted[43] ^= 1
 
 	assert.True(t, o.CheckAdmin(encrypted))
+}
+
+func TestSet4_Challenge3(t *testing.T) {
+	key := []byte("YELLOW SUBMARINE")
+	cbc := block.NewCBC(key, key)
+
+	ciphertext := cbc.Encrypt([]byte("Je laisse a Gavarni, poete des chloroses, Son tr"))
+	var modified []byte
+	modified = append(modified, ciphertext[:16]...)
+	modified = append(modified, make([]byte, 16)...)
+	modified = append(modified, ciphertext[:16]...)
+
+	defer func() {
+		r := recover().(map[string]string)
+		recoveredKey := xor.Bytes([]byte(r["msg"][:16]), []byte(r["msg"][32:48]))
+		assert.Equal(t, key, recoveredKey)
+	}()
+
+	cbc.Decrypt(modified)
+	assert.Fail(t, "should have panicked")
 }

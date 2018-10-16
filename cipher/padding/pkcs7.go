@@ -25,7 +25,10 @@ func UnPKCS7(paddedMsg []byte, blockLen int) []byte {
 	paddingLen := paddedMsg[len(paddedMsg)-1]
 	for i := 1; i <= int(paddingLen); i++ {
 		if paddedMsg[len(paddedMsg)-i] != paddingLen {
-			panic("invalid PKCS#7 padding")
+			panic(map[string]string{
+				"msg": string(paddedMsg),
+				"err": "invalid PKCS#7 padding",
+			})
 		}
 	}
 
