@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/t-bast/cryptopals/cipher/block"
 	"github.com/t-bast/cryptopals/cipher/stream"
+	"github.com/t-bast/cryptopals/mac"
 	"github.com/t-bast/cryptopals/oracle"
 	"github.com/t-bast/cryptopals/xor"
 )
@@ -77,4 +78,14 @@ func TestSet4_Challenge3(t *testing.T) {
 
 	cbc.Decrypt(modified)
 	assert.Fail(t, "should have panicked")
+}
+
+func TestSet4_Challenge4(t *testing.T) {
+	key := []byte("YELLOW SUBMARINE")
+	macer := mac.NewSha1Keyed(key)
+
+	m1 := macer.Authenticate([]byte("Je laisse a Gavarni, poete des chloroses,"))
+	m2 := macer.Authenticate([]byte("Je laisse a Gavarnu, poete des chloroses,"))
+
+	assert.NotEqual(t, m1, m2)
 }
