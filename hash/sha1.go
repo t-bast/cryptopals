@@ -9,19 +9,7 @@ import (
 func Sha1Sum(message []byte) []byte {
 	// Pre-processing
 
-	ml := 8 * len(message)
-	preproc := append(message, 0x80)
-	for {
-		if (len(preproc)*8)%512 == 448 {
-			break
-		}
-
-		preproc = append(preproc, 0x00)
-	}
-
-	suffix := make([]byte, 8)
-	binary.BigEndian.PutUint64(suffix, uint64(ml))
-	preproc = append(preproc, suffix...)
+	preproc := append(message, Sha1Pad(message)...)
 
 	// Processing
 
@@ -31,10 +19,17 @@ func Sha1Sum(message []byte) []byte {
 	h3 := uint32(0x10325476)
 	h4 := uint32(0xC3D2E1F0)
 
-	for i := 0; i < len(preproc)/64; i++ {
+	return Sha1SumInternal(preproc, h0, h1, h2, h3, h4)
+}
+
+// Sha1SumInternal computes the sha1 digest of the given message.
+// It feeds the given values to the internal registers.
+// The message needs to be correctly pre-processed.
+func Sha1SumInternal(message []byte, h0, h1, h2, h3, h4 uint32) []byte {
+	for i := 0; i < len(message)/64; i++ {
 		w := make([]uint32, 80)
 		for j := 0; j < 16; j++ {
-			w[j] = binary.BigEndian.Uint32(preproc[64*i+4*j : 64*i+4*(j+1)])
+			w[j] = binary.BigEndian.Uint32(message[64*i+4*j : 64*i+4*(j+1)])
 		}
 		for j := 16; j < 80; j++ {
 			w[j] = bits.RotateLeft32(w[j-3]^w[j-8]^w[j-14]^w[j-16], 1)
@@ -86,4 +81,23 @@ func Sha1Sum(message []byte) []byte {
 	binary.BigEndian.PutUint32(hh[16:], h4)
 
 	return hh[:]
+}
+
+// Sha1Pad produces the padding sha-1 internally uses.
+func Sha1Pad(message []byte) []byte {
+	ml := 8 * len(message)
+	padding := []byte{0x80}
+
+	for {
+		if ((len(message)+len(padding))*8)%512 == 448 {
+			break
+		}
+
+		padding = append(padding, 0x00)
+	}
+
+	lenSuffix := make([]byte, 8)
+	binary.BigEndian.PutUint64(lenSuffix, uint64(ml))
+
+	return append(padding, lenSuffix...)
 }

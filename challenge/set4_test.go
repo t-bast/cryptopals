@@ -2,6 +2,7 @@ package challenge
 
 import (
 	"encoding/base64"
+	"encoding/binary"
 	"io/ioutil"
 	"path/filepath"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/t-bast/cryptopals/cipher/block"
 	"github.com/t-bast/cryptopals/cipher/stream"
+	"github.com/t-bast/cryptopals/hash"
 	"github.com/t-bast/cryptopals/mac"
 	"github.com/t-bast/cryptopals/oracle"
 	"github.com/t-bast/cryptopals/xor"
@@ -88,4 +90,37 @@ func TestSet4_Challenge4(t *testing.T) {
 	m2 := macer.Authenticate([]byte("Je laisse a Gavarnu, poete des chloroses,"))
 
 	assert.NotEqual(t, m1, m2)
+}
+
+func TestSet4_Challenge5(t *testing.T) {
+	// The attacker doesn't know the key.
+	key := []byte("YELLOW SUBMARINE")
+	macer := mac.NewSha1Keyed(key)
+
+	// But she knows the initial message and the length of the key.
+	message := []byte("comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon")
+	m1 := macer.Authenticate(message)
+
+	// And from only the original mac and the message, she's able to produce
+	// a valid mac for a message that has ";admin=true" appended.
+	h0 := binary.BigEndian.Uint32(m1[:4])
+	h1 := binary.BigEndian.Uint32(m1[4:8])
+	h2 := binary.BigEndian.Uint32(m1[8:12])
+	h3 := binary.BigEndian.Uint32(m1[12:16])
+	h4 := binary.BigEndian.Uint32(m1[16:])
+
+	// Figure out the length of the mac-ed message (with key prefix).
+	tmp := append(make([]byte, 16), message...)
+	originalPadding := hash.Sha1Pad(tmp)
+	tmp = append(tmp, originalPadding...)
+	originalPaddedLen := len(tmp)
+
+	fakeMessage := append(make([]byte, originalPaddedLen), []byte(";admin=true")...)
+	paddedFake := append(fakeMessage, hash.Sha1Pad(fakeMessage)...)
+	assert.Contains(t, string(paddedFake), ";admin=true")
+
+	m2 := hash.Sha1SumInternal(paddedFake[originalPaddedLen:], h0, h1, h2, h3, h4)
+	assert.Equal(t, m2, macer.Authenticate(append(
+		message,
+		append(originalPadding, []byte(";admin=true")...)...)))
 }
