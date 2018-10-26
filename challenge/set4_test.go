@@ -124,3 +124,35 @@ func TestSet4_Challenge5(t *testing.T) {
 		message,
 		append(originalPadding, []byte(";admin=true")...)...)))
 }
+
+func TestSet4_Challenge6(t *testing.T) {
+	// The attacker doesn't know the key.
+	key := []byte("YELLOW SUBMARINE")
+	macer := mac.NewMD4Keyed(key)
+
+	// But she knows the initial message and the length of the key.
+	message := []byte("comment1=cooking%20MCs;userdata=foo;comment2=%20like%20a%20pound%20of%20bacon")
+	m1 := macer.Authenticate(message)
+
+	// And from only the original mac and the message, she's able to produce
+	// a valid mac for a message that has ";admin=true" appended.
+	a := binary.BigEndian.Uint32(m1[:4])
+	b := binary.BigEndian.Uint32(m1[4:8])
+	c := binary.BigEndian.Uint32(m1[8:12])
+	d := binary.BigEndian.Uint32(m1[12:16])
+
+	// Figure out the length of the mac-ed message (with key prefix).
+	tmp := append(make([]byte, 16), message...)
+	originalPadding := hash.MD4Pad(tmp)
+	tmp = append(tmp, originalPadding...)
+	originalPaddedLen := len(tmp)
+
+	fakeMessage := append(make([]byte, originalPaddedLen), []byte(";admin=true")...)
+	paddedFake := append(fakeMessage, hash.MD4Pad(fakeMessage)...)
+	assert.Contains(t, string(paddedFake), ";admin=true")
+
+	m2 := hash.MD4SumInternal(paddedFake[originalPaddedLen:], a, b, c, d)
+	assert.Equal(t, m2, macer.Authenticate(append(
+		message,
+		append(originalPadding, []byte(";admin=true")...)...)))
+}
