@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -155,4 +156,51 @@ func TestSet4_Challenge6(t *testing.T) {
 	assert.Equal(t, m2, macer.Authenticate(append(
 		message,
 		append(originalPadding, []byte(";admin=true")...)...)))
+}
+
+func TestSet4_Challenge7(t *testing.T) {
+	m := mac.NewSha1Hmac([]byte("YELLOW SUBMARINE"))
+	message := []byte("Authenticatz plz")
+
+	macPwn := make([]byte, 20)
+LOOP:
+	for i := 0; i < 20; i++ {
+		// Baseline (needs two measures in case 0 was the valid byte).
+		start := time.Now()
+		macPwn[i] = 0
+		ok := m.InsecureVerify(i, message, macPwn)
+		total1 := time.Since(start)
+		if ok {
+			break LOOP
+		}
+
+		start = time.Now()
+		macPwn[i] = 1
+		ok = m.InsecureVerify(i, message, macPwn)
+		total2 := time.Since(start)
+		if ok {
+			break LOOP
+		}
+
+		baseline := total1
+		if total2 < total1 {
+			baseline = total2
+		}
+
+		for j := byte(0); j <= byte(255); j++ {
+			macPwn[i] = j
+			start := time.Now()
+			ok := m.InsecureVerify(i, message, macPwn)
+			if ok {
+				break LOOP
+			}
+
+			total := time.Since(start)
+			if (total - baseline) > 2*time.Millisecond {
+				break
+			}
+		}
+	}
+
+	assert.True(t, m.Verify(message, macPwn))
 }
