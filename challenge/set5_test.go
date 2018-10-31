@@ -1,11 +1,14 @@
 package challenge
 
 import (
+	"crypto/rand"
+	"crypto/sha1"
 	"math/big"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/t-bast/cryptopals/cipher/block"
 	"github.com/t-bast/cryptopals/dhm"
 )
 
@@ -18,8 +21,70 @@ func TestSet5_Challenge1(t *testing.T) {
 	aliceSecret, alicePublic := params.GenerateKeys()
 	bobSecret, bobPublic := params.GenerateKeys()
 
-	aliceKey := params.SharedKey(aliceSecret, bobPublic)
-	bobKey := params.SharedKey(bobSecret, alicePublic)
+	aliceKey := params.SharedSecret(aliceSecret, bobPublic)
+	bobKey := params.SharedSecret(bobSecret, alicePublic)
 
 	assert.Equal(t, aliceKey, bobKey)
+}
+
+func TestSet5_Challenge2(t *testing.T) {
+	/* Public parameters. */
+
+	g := big.NewInt(2)
+	p := big.NewInt(37)
+	params := dhm.New(g, p)
+
+	/* Secret parameters from participants. */
+
+	aliceSecret, _ := params.GenerateKeys()
+	bobSecret, _ := params.GenerateKeys()
+
+	/* Implement a MITM attack on a communication protocol. */
+
+	// A -> M: p, g, A
+	// Nothing to do.
+
+	// M -> B: p, g, p
+	bobAlicePublic := p
+
+	// B -> M: B
+	// Nothing to do.
+
+	// M -> A: p
+	aliceBobPublic := p
+
+	// A -> M: AES-CBC(SHA1(s)[0:16], IV=random(16), message) + IV
+	aliceSharedKey := sha1.Sum(params.SharedSecret(aliceSecret, aliceBobPublic))
+	aliceIV := make([]byte, 16)
+	rand.Read(aliceIV)
+
+	aliceCBC := block.NewCBC(aliceSharedKey[0:16], aliceIV)
+	aliceEncrypted := aliceCBC.Encrypt([]byte("Ma jeunesse ne fut qu'un ténébreux orage"))
+
+	// M -> B: simply relay while reading decrypted plaintext.
+	mallorySharedKey := sha1.Sum(big.NewInt(0).Bytes())
+	malloryCBC := block.NewCBC(mallorySharedKey[0:16], aliceIV)
+	intercepted := malloryCBC.Decrypt(aliceEncrypted)
+	assert.Equal(t, []byte("Ma jeunesse ne fut qu'un ténébreux orage"), intercepted)
+
+	// B -> M: AES-CBC(SHA1(s)[0:16], IV=random(16), alice's message) + IV
+	bobSharedKey := sha1.Sum(params.SharedSecret(bobSecret, bobAlicePublic))
+	bobIV := make([]byte, 16)
+	rand.Read(bobIV)
+
+	// Bob is able to read Alice's message so doesn't suspect anything.
+	bobDecrypted := block.NewCBC(bobSharedKey[0:16], aliceIV).Decrypt(aliceEncrypted)
+	assert.Equal(t, []byte("Ma jeunesse ne fut qu'un ténébreux orage"), bobDecrypted)
+
+	bobCBC := block.NewCBC(bobSharedKey[0:16], bobIV)
+	bobEncrypted := bobCBC.Encrypt([]byte("Traversé çà et là par de brillants soleils;"))
+
+	// M -> A: simply relay while reading decrypted plaintext.
+	malloryCBC = block.NewCBC(mallorySharedKey[0:16], bobIV)
+	intercepted = malloryCBC.Decrypt(bobEncrypted)
+	assert.Equal(t, []byte("Traversé çà et là par de brillants soleils;"), intercepted)
+
+	// Alice is able to read Bob's message so doesn't suspect anything.
+	aliceDecrypted := block.NewCBC(aliceSharedKey[0:16], bobIV).Decrypt(bobEncrypted)
+	assert.Equal(t, []byte("Traversé çà et là par de brillants soleils;"), aliceDecrypted)
 }

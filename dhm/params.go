@@ -2,7 +2,6 @@ package dhm
 
 import (
 	"crypto/rand"
-	"crypto/sha256"
 	"math/big"
 )
 
@@ -29,10 +28,11 @@ func (p *Params) GenerateKeys() (*big.Int, *big.Int) {
 	return sk, pk
 }
 
-// SharedKey for symmetric encryption.
+// SharedSecret from the key exchange.
 // You should provide your private key and the other party's public key.
-func (p *Params) SharedKey(sk *big.Int, pk *big.Int) []byte {
+// You should not use this secret directly. Instead, derive a private key
+// in a secure way.
+func (p *Params) SharedSecret(sk *big.Int, pk *big.Int) []byte {
 	s := new(big.Int).Exp(pk, sk, p.P)
-	h := sha256.Sum256(s.Bytes())
-	return h[:]
+	return s.Bytes()
 }
