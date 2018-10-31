@@ -88,3 +88,92 @@ func TestSet5_Challenge2(t *testing.T) {
 	aliceDecrypted := block.NewCBC(aliceSharedKey[0:16], bobIV).Decrypt(bobEncrypted)
 	assert.Equal(t, []byte("Traversé çà et là par de brillants soleils;"), aliceDecrypted)
 }
+
+func TestSet5_Challenge3(t *testing.T) {
+	/* Expected public parameters. */
+
+	g := big.NewInt(2)
+	p := big.NewInt(37)
+
+	testCases := []struct {
+		modifiedG    *big.Int
+		decryptAlice func(t *testing.T, encrypted []byte, iv []byte) []byte
+	}{{
+		modifiedG: big.NewInt(1),
+		decryptAlice: func(t *testing.T, encrypted []byte, iv []byte) []byte {
+			// Bob's public key will always be 1, so Alice's shared secret
+			// always ends up being 1 too.
+			sharedKey := sha1.Sum(big.NewInt(1).Bytes())
+			cbc := block.NewCBC(sharedKey[0:16], iv)
+			return cbc.Decrypt(encrypted)
+		},
+	}, {
+		modifiedG: p,
+		decryptAlice: func(t *testing.T, encrypted []byte, iv []byte) []byte {
+			// Bob's public key will always be 0, so Alice's shared secret
+			// always ends up being 0 too.
+			sharedKey := sha1.Sum(big.NewInt(0).Bytes())
+			cbc := block.NewCBC(sharedKey[0:16], iv)
+			return cbc.Decrypt(encrypted)
+		},
+	}, {
+		modifiedG: new(big.Int).Sub(p, big.NewInt(1)),
+		decryptAlice: func(t *testing.T, encrypted []byte, iv []byte) (res []byte) {
+			// Bob's public key will be (-1)^sk(alice).
+			// Alice's shared key will be (-1)^(sk(alice)*sk(alice)).
+			// If Alice's private key is 1, this will be (p-1).
+			// Otherwise (in most cases) it will be 1.
+			sharedKey := sha1.Sum(big.NewInt(1).Bytes())
+			cbc := block.NewCBC(sharedKey[0:16], iv)
+
+			defer func() {
+				if r := recover(); r != nil {
+					// If we're here that means alice's private key is 1.
+					// And thus its shared key will be (p-1).
+					sharedKey := sha1.Sum(new(big.Int).Sub(p, big.NewInt(1)).Bytes())
+					cbc := block.NewCBC(sharedKey[0:16], iv)
+					res = cbc.Decrypt(encrypted)
+				}
+			}()
+
+			res = cbc.Decrypt(encrypted)
+			return
+		},
+	}}
+
+	for _, tt := range testCases {
+		t.Run(tt.modifiedG.String(), func(t *testing.T) {
+			// A -> M: p, g
+			aliceParams := dhm.New(g, p)
+			aliceSecret, alicePublic := aliceParams.GenerateKeys()
+
+			// M -> B: p, modified g
+			bobParams := dhm.New(tt.modifiedG, p)
+			bobSecret, bobPublic := bobParams.GenerateKeys()
+
+			// B -> A: ACK
+			// Nothing to do.
+
+			// A -> B: A
+			bobSharedSecret := sha1.Sum(bobParams.SharedSecret(bobSecret, alicePublic))
+
+			// B -> A: B
+			aliceSharedSecret := sha1.Sum(aliceParams.SharedSecret(aliceSecret, bobPublic))
+
+			// A -> B: AES-CBC(SHA1(s)[0:16], iv=random(16), message) + iv
+			aliceIV := make([]byte, 16)
+			rand.Read(aliceIV)
+			aliceCBC := block.NewCBC(aliceSharedSecret[0:16], aliceIV)
+			aliceEncrypted := aliceCBC.Encrypt([]byte("Une fleur qui ressemble à mon rouge idéal."))
+
+			// Mallory can intercept and decrypt.
+			malloryDecrypted := tt.decryptAlice(t, aliceEncrypted, aliceIV)
+			assert.Equal(t, []byte("Une fleur qui ressemble à mon rouge idéal."), malloryDecrypted)
+
+			// TODO: modify and forward to B.
+			// TODO: verify Bob correctly decrypts Alice's message.
+			// TODO: decrypt Bob's message.
+			// TODO: verify Alice correctly decrypts Bob's message.
+		})
+	}
+}
