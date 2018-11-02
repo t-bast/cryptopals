@@ -92,15 +92,14 @@ func TestSet5_Challenge2(t *testing.T) {
 func TestSet5_Challenge3(t *testing.T) {
 	/* Expected public parameters. */
 
-	g := big.NewInt(2)
 	p := big.NewInt(37)
 
 	testCases := []struct {
-		modifiedG    *big.Int
-		decryptAlice func(t *testing.T, encrypted []byte, iv []byte) []byte
+		modifiedG      *big.Int
+		decryptMallory func(t *testing.T, encrypted []byte, iv []byte) []byte
 	}{{
 		modifiedG: big.NewInt(1),
-		decryptAlice: func(t *testing.T, encrypted []byte, iv []byte) []byte {
+		decryptMallory: func(t *testing.T, encrypted []byte, iv []byte) []byte {
 			// Bob's public key will always be 1, so Alice's shared secret
 			// always ends up being 1 too.
 			sharedKey := sha1.Sum(big.NewInt(1).Bytes())
@@ -109,7 +108,7 @@ func TestSet5_Challenge3(t *testing.T) {
 		},
 	}, {
 		modifiedG: p,
-		decryptAlice: func(t *testing.T, encrypted []byte, iv []byte) []byte {
+		decryptMallory: func(t *testing.T, encrypted []byte, iv []byte) []byte {
 			// Bob's public key will always be 0, so Alice's shared secret
 			// always ends up being 0 too.
 			sharedKey := sha1.Sum(big.NewInt(0).Bytes())
@@ -118,7 +117,7 @@ func TestSet5_Challenge3(t *testing.T) {
 		},
 	}, {
 		modifiedG: new(big.Int).Sub(p, big.NewInt(1)),
-		decryptAlice: func(t *testing.T, encrypted []byte, iv []byte) (res []byte) {
+		decryptMallory: func(t *testing.T, encrypted []byte, iv []byte) (res []byte) {
 			// Bob's public key will be (-1)^sk(alice).
 			// Alice's shared key will be (-1)^(sk(alice)*sk(alice)).
 			// If Alice's private key is 1, this will be (p-1).
@@ -144,7 +143,7 @@ func TestSet5_Challenge3(t *testing.T) {
 	for _, tt := range testCases {
 		t.Run(tt.modifiedG.String(), func(t *testing.T) {
 			// A -> M: p, g
-			aliceParams := dhm.New(g, p)
+			aliceParams := dhm.New(tt.modifiedG, p)
 			aliceSecret, alicePublic := aliceParams.GenerateKeys()
 
 			// M -> B: p, modified g
@@ -167,13 +166,17 @@ func TestSet5_Challenge3(t *testing.T) {
 			aliceEncrypted := aliceCBC.Encrypt([]byte("Une fleur qui ressemble à mon rouge idéal."))
 
 			// Mallory can intercept and decrypt.
-			malloryDecrypted := tt.decryptAlice(t, aliceEncrypted, aliceIV)
+			malloryDecrypted := tt.decryptMallory(t, aliceEncrypted, aliceIV)
 			assert.Equal(t, []byte("Une fleur qui ressemble à mon rouge idéal."), malloryDecrypted)
 
-			// TODO: modify and forward to B.
-			// TODO: verify Bob correctly decrypts Alice's message.
-			// TODO: decrypt Bob's message.
-			// TODO: verify Alice correctly decrypts Bob's message.
+			// B -> A: AES-CBC(SHA1(s)[0:16], iv=random(16), message) + iv
+			bobIV := make([]byte, 16)
+			rand.Read(bobIV)
+			bobCBC := block.NewCBC(bobSharedSecret[0:16], bobIV)
+			bobEncrypted := bobCBC.Encrypt([]byte("Car je ne puis trouver parmi ces pâles roses"))
+
+			malloryDecrypted = tt.decryptMallory(t, bobEncrypted, bobIV)
+			assert.Equal(t, []byte("Car je ne puis trouver parmi ces pâles roses"), malloryDecrypted)
 		})
 	}
 }
