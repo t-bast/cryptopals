@@ -10,6 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/t-bast/cryptopals/cipher/block"
 	"github.com/t-bast/cryptopals/dhm"
+	"github.com/t-bast/cryptopals/password"
 )
 
 func TestSet5_Challenge1(t *testing.T) {
@@ -179,4 +180,20 @@ func TestSet5_Challenge3(t *testing.T) {
 			assert.Equal(t, []byte("Car je ne puis trouver parmi ces pâles roses"), malloryDecrypted)
 		})
 	}
+}
+
+func TestSet5_Challenge4(t *testing.T) {
+	n := big.NewInt(37)
+	g := big.NewInt(2)
+	k := big.NewInt(3)
+
+	c := password.NewSRPClient(n, g, k, "alice@iacr.org", "bob is my lover")
+	s := password.NewSRPServer(n, g, k, "alice@iacr.org", "bob is my lover")
+
+	cPub := c.CreateKey()
+	salt, sPub := s.CreateKey()
+
+	secretMac := c.ComputeSecret(salt, sPub)
+	err := s.ValidateSecretMac(cPub, secretMac)
+	assert.NoError(t, err)
 }
