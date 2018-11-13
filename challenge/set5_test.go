@@ -1,8 +1,10 @@
 package challenge
 
 import (
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha1"
+	"crypto/sha256"
 	"math/big"
 	"testing"
 
@@ -195,5 +197,27 @@ func TestSet5_Challenge4(t *testing.T) {
 
 	secretMac := c.ComputeSecret(salt, sPub)
 	err := s.ValidateSecretMac(cPub, secretMac)
+	assert.NoError(t, err)
+}
+
+func TestSet5_Challenge5(t *testing.T) {
+	n := big.NewInt(37)
+	g := big.NewInt(2)
+	k := big.NewInt(3)
+
+	s := password.NewSRPServer(n, g, k, "alice@iacr.org", "bob is my lover")
+	salt, _ := s.CreateKey()
+
+	// The client has an invalid password, but will be able to login.
+	// Any time the client sends a public key that equals 0 mod(N)
+	// this ends up with S = 0 server-side.
+	// So sending HMAC-SHA256(0, salt) will always be accepted.
+	backdoorHash := sha256.Sum256(big.NewInt(0).Bytes())
+	backdoor := hmac.New(sha256.New, salt.Bytes()).Sum(backdoorHash[:])
+
+	err := s.ValidateSecretMac(big.NewInt(0), backdoor)
+	assert.NoError(t, err)
+
+	err = s.ValidateSecretMac(n, backdoor)
 	assert.NoError(t, err)
 }
