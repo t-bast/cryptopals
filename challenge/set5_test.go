@@ -1,6 +1,7 @@
 package challenge
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha1"
@@ -220,4 +221,53 @@ func TestSet5_Challenge5(t *testing.T) {
 
 	err = s.ValidateSecretMac(n, backdoor)
 	assert.NoError(t, err)
+}
+
+func TestSet5_Challenge6(t *testing.T) {
+	n := big.NewInt(37)
+	g := big.NewInt(2)
+	k := big.NewInt(3)
+
+	c := password.NewSRPClient2(n, g, k, "alice@iacr.org", "bob is my lover")
+	s := password.NewSRPServer2(n, g, k, "alice@iacr.org", "bob is my lover")
+
+	cPub := c.CreateKey()
+	salt, sPub, u := s.CreateKey()
+
+	secretMac := c.ComputeSecret(salt, sPub, u)
+	err := s.ValidateSecretMac(cPub, secretMac)
+	assert.NoError(t, err)
+
+	// MITM attack can recover the password from the mac by manipulating b, B,
+	// u and the salt.
+	// We send salt=0, b=1 (B=g) and u=1.
+	// This way, client-side S becomes g**(a+x).
+	// We can then use an offline dictionary to try passwords, compute x,
+	// compute the client-side value of S until it matches.
+	maliciousSalt := big.NewInt(0)
+	maliciousPub := g
+	maliciousU := big.NewInt(1)
+
+	pwnedMac := c.ComputeSecret(maliciousSalt, maliciousPub, maliciousU)
+	pwnedPassword := ""
+	passwordDB := []string{"I hate Bob", "I'm sleeping with Dave", "bob is my lover", "who is that bob anyway?"}
+	for _, pwd := range passwordDB {
+		xh := sha256.Sum256(append(maliciousSalt.Bytes(), []byte(pwd)...))
+		x := new(big.Int).SetBytes(xh[:])
+		s := new(big.Int).Mod(
+			new(big.Int).Mul(
+				cPub,
+				new(big.Int).Exp(g, x, n),
+			),
+			n,
+		)
+		k := sha256.Sum256(s.Bytes())
+		macAttempt := hmac.New(sha256.New, maliciousSalt.Bytes()).Sum(k[:])
+		if bytes.Equal(pwnedMac, macAttempt) {
+			pwnedPassword = pwd
+			break
+		}
+	}
+
+	assert.Equal(t, "bob is my lover", pwnedPassword)
 }
