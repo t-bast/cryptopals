@@ -281,3 +281,93 @@ func TestSet5_Challenge7(t *testing.T) {
 
 	assert.Equal(t, message, decrypted)
 }
+
+func TestSet5_Challenge8(t *testing.T) {
+	r1 := pkc.NewRSA()
+	_, n1 := r1.PublicKey()
+	r2 := pkc.NewRSA()
+	_, n2 := r2.PublicKey()
+	r3 := pkc.NewRSA()
+	_, n3 := r3.PublicKey()
+
+	message := []byte("Moisir parmi les ossements.")
+	c1 := r1.Encrypt(message)
+	assert.Equal(t, message, r1.Decrypt(c1))
+	c2 := r2.Encrypt(message)
+	assert.Equal(t, message, r2.Decrypt(c2))
+	c3 := r3.Encrypt(message)
+	assert.Equal(t, message, r3.Decrypt(c3))
+
+	ms1 := new(big.Int).Mul(n2, n3)
+	ms2 := new(big.Int).Mul(n1, n3)
+	ms3 := new(big.Int).Mul(n1, n2)
+
+	result := new(big.Int).Add(
+		new(big.Int).Mul(
+			new(big.Int).Mul(new(big.Int).SetBytes(c1), ms1),
+			new(big.Int).ModInverse(ms1, n1),
+		),
+		new(big.Int).Add(
+			new(big.Int).Mul(
+				new(big.Int).Mul(new(big.Int).SetBytes(c2), ms2),
+				new(big.Int).ModInverse(ms2, n2),
+			),
+			new(big.Int).Mul(
+				new(big.Int).Mul(new(big.Int).SetBytes(c3), ms3),
+				new(big.Int).ModInverse(ms3, n3),
+			),
+		),
+	)
+
+	modResult := new(big.Int).Mod(
+		result,
+		new(big.Int).Mul(n1, new(big.Int).Mul(n2, n3)),
+	)
+
+	decrypted, _ := cubeRoot(modResult)
+
+	assert.Equal(t, message, decrypted.Bytes())
+}
+
+func cubeRoot(i *big.Int) (cbrt *big.Int, rem *big.Int) {
+	var (
+		n0    = big.NewInt(0)
+		n1    = big.NewInt(1)
+		n2    = big.NewInt(2)
+		n3    = big.NewInt(3)
+		guess = new(big.Int).Div(i, n2)
+		dx    = new(big.Int)
+		absDx = new(big.Int)
+		minDx = new(big.Int).Abs(i)
+		step  = new(big.Int).Abs(new(big.Int).Div(guess, n2))
+		cube  = new(big.Int)
+	)
+	for {
+		cube.Exp(guess, n3, nil)
+		dx.Sub(i, cube)
+		cmp := dx.Cmp(n0)
+		if cmp == 0 {
+			return guess, n0
+		}
+
+		absDx.Abs(dx)
+		switch absDx.Cmp(minDx) {
+		case -1:
+			minDx.Set(absDx)
+		case 0:
+			return guess, dx
+		}
+
+		switch cmp {
+		case -1:
+			guess.Sub(guess, step)
+		case +1:
+			guess.Add(guess, step)
+		}
+
+		step.Div(step, n2)
+		if step.Cmp(n0) == 0 {
+			step.Set(n1)
+		}
+	}
+}
