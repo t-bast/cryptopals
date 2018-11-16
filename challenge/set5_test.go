@@ -14,6 +14,7 @@ import (
 	"github.com/t-bast/cryptopals/cipher/block"
 	"github.com/t-bast/cryptopals/dhm"
 	"github.com/t-bast/cryptopals/password"
+	"github.com/t-bast/cryptopals/pkc"
 )
 
 func TestSet5_Challenge1(t *testing.T) {
@@ -270,4 +271,13 @@ func TestSet5_Challenge6(t *testing.T) {
 	}
 
 	assert.Equal(t, "bob is my lover", pwnedPassword)
+}
+
+func TestSet5_Challenge7(t *testing.T) {
+	r := pkc.NewRSA()
+	message := []byte("une charogne infâme")
+	encrypted := r.Encrypt(message)
+	decrypted := r.Decrypt(encrypted)
+
+	assert.Equal(t, message, decrypted)
 }
